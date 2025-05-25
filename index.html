@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Image Generator with Backend</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* Custom styles to match the dark theme */
+    body {
+      background-color: #1A1A1A;
+      min-height: 100vh;
+    }
+    select, input, textarea {
+      background-color: #3A3A3A !important;
+      color: #E0E0E0 !important;
+      border-color: #4A4A4A !important;
+    }
+    select:focus, input:focus, textarea:focus {
+      outline: none;
+      border-color: #5B4EFF !important;
+    }
+  </style>
+</head>
+<body class="flex flex-col p-4 sm:p-6 md:p-8">
+  <h1 class="text-2xl sm:text-3xl font-bold mb-6 text-center text-white">
+    AI Image Generator <span class="text-green-500">Free</span>
+  </h1>
+
+  <!-- Form Section -->
+  <div class="flex flex-col gap-4 w-full max-w-3xl mx-auto">
+    <div>
+      <label for="description" class="block text-sm sm:text-base font-medium text-gray-300 mb-1">Prompt</label>
+      <textarea
+        id="description"
+        class="block w-full p-3 border rounded-md placeholder-gray-500 text-sm sm:text-base"
+        rows="4"
+        placeholder="Describe the image you want..."
+      ></textarea>
+    </div>
+
+    <div>
+      <label for="style-preset" class="block text-sm sm:text-base font-medium text-gray-300 mb-1">Style Preset:</label>
+      <select id="style-preset" class="block w-full p-3 border rounded-md text-sm sm:text-base">
+        <option value="none">None (Default)</option>
+        <option value="3d-model">3D Model</option>
+        <option value="analog-film">Analog Film</option>
+        <option value="anime">Anime</option>
+        <option value="cinematic">Cinematic</option>
+        <option value="comic-book">Comic Book</option>
+        <option value="digital-art">Digital Art</option>
+        <option value="enhance">Enhance</option>
+        <option value="fantasy-art">Fantasy Art</option>
+        <option value="isometric">Isometric</option>
+        <option value="line-art">Line Art</option>
+        <option value="low-poly">Low Poly</option>
+        <option value="modeling-compound">Modeling Compound</option>
+        <option value="neon-punk" selected>Neon Punk</option>
+        <option value="origami">Origami</option>
+        <option value="photographic">Photographic</option>
+        <option value="pixel-art">Pixel Art</option>
+        <option value="tile-texture">Tile Texture</option>
+      </select>
+    </div>
+
+    <div>
+      <label for="aspect-ratio" class="block text-sm sm:text-base font-medium text-gray-300 mb-1">Aspect Ratio:</label>
+      <select id="aspect-ratio" class="block w-full p-3 border rounded-md text-sm sm:text-base">
+        <option value="1:1">512x512</option>
+        <option value="16:9" selected>16:9 (Landscape)</option>
+        <option value="4:3">4:3</option>
+        <option value="9:16">9:16 (Portrait)</option>
+      </select>
+    </div>
+
+    <div>
+      <label for="output-format" class="block text-sm sm:text-base font-medium text-gray-300 mb-1">Output Format:</label>
+      <select id="output-format" class="block w-full p-3 border rounded-md text-sm sm:text-base">
+        <option value="png" selected>PNG (Best quality)</option>
+        <option value="jpeg">JPEG</option>
+      </select>
+    </div>
+
+    <div>
+      <label for="seed" class="block text-sm sm:text-base font-medium text-gray-300 mb-1">Seed (0 for random):</label>
+      <input
+        id="seed"
+        type="number"
+        min="0"
+        value="0"
+        class="block w-full p-3 border rounded-md text-sm sm:text-base"
+      >
+      <p class="text-xs sm:text-sm text-gray-500 mt-1">Use the same seed to get consistent results or 0 for random generation</p>
+    </div>
+
+    <button
+      id="generate-btn"
+      class="w-full bg-[#5B4EFF] text-white p-3 rounded-md hover:bg-[#4A3ECC] disabled:bg-gray-500 text-sm sm:text-base"
+      onclick="generateImage()"
+    >
+      Generate Image
+    </button>
+
+    <button
+      id="retry-btn"
+      class="w-full bg-gray-600 text-white p-3 rounded-md hover:bg-gray-700 hidden mt-2 text-sm sm:text-base"
+      onclick="generateImage()"
+    >
+      Retry
+    </button>
+
+    <p id="status" class="mt-4 text-center text-gray-400 text-sm sm:text-base"></p>
+
+    <div id="image-container" class="mt-4 hidden">
+      <img id="generated-image" src="" alt="Generated Image" class="w-full rounded-md">
+      <a
+        id="download-btn"
+        href="#"
+        class="block w-full bg-[#5B4EFF] text-white p-3 rounded-md hover:bg-[#4A3ECC] text-center mt-2 text-sm sm:text-base"
+        style="display: none;"
+        download
+      >
+        Download Image
+      </a>
+    </div>
+  </div>
+
+  <script>
+    async function generateImage() {
+      const descriptionInput = document.getElementById('description').value;
+      const stylePreset = document.getElementById('style-preset').value;
+      const aspectRatio = document.getElementById('aspect-ratio').value;
+      const outputFormat = document.getElementById('output-format').value;
+      const seed = document.getElementById('seed').value;
+      const generateBtn = document.getElementById('generate-btn');
+      const retryBtn = document.getElementById('retry-btn');
+      const status = document.getElementById('status');
+      const imageContainer = document.getElementById('image-container');
+      const generatedImage = document.getElementById('generated-image');
+      const downloadBtn = document.getElementById('download-btn');
+
+      // Reset UI
+      status.textContent = 'Generating image...';
+      generateBtn.disabled = true;
+      retryBtn.classList.add('hidden');
+      imageContainer.classList.add('hidden');
+      generatedImage.src = '';
+      downloadBtn.style.display = 'none';
+      downloadBtn.href = '#';
+
+      const url = '/generate'; // Backend endpoint
+      const payload = {
+        description: descriptionInput || "A futuristic city skyline at sunset, with flying cars and neon holographic billboards, cyberpunk style",
+        style_preset: stylePreset,
+        aspect_ratio: aspectRatio,
+        output_format: outputFormat,
+        seed: seed
+      };
+
+      try {
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload)
+        });
+
+        const result = await response.json();
+        if (response.ok && result.success) {
+          status.textContent = `Image generated successfully!`;
+          generatedImage.src = result.image_url;
+          imageContainer.classList.remove('hidden');
+          if (result.filename) {
+            downloadBtn.href = `/download/${result.filename}`;
+            downloadBtn.style.display = 'block';
+          }
+        } else {
+          status.textContent = `Error: ${result.error || 'Failed to generate image'}`;
+          retryBtn.classList.remove('hidden');
+        }
+      } catch (error) {
+        status.textContent = 'Request failed: Failed to fetch. Please check your network or the backend server.';
+        retryBtn.classList.remove('hidden');
+      } finally {
+        generateBtn.disabled = false;
+      }
+    }
+  </script>
+</body>
+</html>
